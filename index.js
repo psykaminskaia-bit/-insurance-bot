@@ -1,9 +1,9 @@
 const TelegramBot = require('node-telegram-bot-api');
 const axios = require('axios');
 
-const token = '6960833904:AAGEvh-blSJK0io43uJ71dI_LOvAYkL8Tto';
-const ADMIN_CHAT_ID = '6818754668';
-const BITRIX_WEBHOOK = 'https://beinsure.bitrix24.ru/rest/1/qt7zesl23vdzdi6m/';
+const token = process.env.BOT_TOKEN;
+const BITRIX_WEBHOOK = process.env.BITRIX_WEBHOOK;
+const ADMIN_CHAT_ID = process.env.ADMIN_CHAT_ID;
 
 const bot = new TelegramBot(token, { polling: true });
 
