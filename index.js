@@ -198,11 +198,18 @@ async function runReminderJob() {
 
     try {
         const allDeals = await getAllDeals();
+const testDeals = allDeals.filter(d => d.ID == 499);
         const fields = await getFields();
 
         const grouped = {};
 
-  for (const deal of allDeals) {
+  for (const deal of testDeals) {
+    const contact = await getContact(deal.CONTACT_ID);
+    const chatId = contact[TG_CHAT_FIELD];
+
+    await bot.sendMessage(chatId, 'ТЕСТ REMINDER');
+    return;
+
     console.log('CHECK DEAL', {
         id: deal.ID,
         stage: deal.STAGE_SEMANTIC_ID,
