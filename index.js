@@ -202,8 +202,17 @@ async function runReminderJob() {
 
         const grouped = {};
 
-        for (const deal of allDeals) {
-            if (deal.STAGE_SEMANTIC_ID !== 'S') continue;
+  for (const deal of allDeals) {
+    console.log('CHECK DEAL', {
+        id: deal.ID,
+        stage: deal.STAGE_SEMANTIC_ID,
+        contact: deal.CONTACT_ID,
+        end: deal.UF_CRM_1733304976338,
+        days: deal.UF_CRM_1733304976338 ? daysUntil(deal.UF_CRM_1733304976338) : null,
+        reminder1: deal[REMINDER_1]
+    });
+
+    if (deal.STAGE_SEMANTIC_ID !== 'S') continue;
             if (!deal.CONTACT_ID) continue;
             if (!deal.UF_CRM_1733304976338) continue;
 
