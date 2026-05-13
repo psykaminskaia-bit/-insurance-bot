@@ -197,35 +197,31 @@ async function runReminderJob() {
     console.log('REMINDER JOB STARTED');
 
     try {
-        const allDeals = await getAllDeals();
         const fields = await getFields();
 
+       const allDeals = await getAllDeals();
+const deals = allDeals.filter(d => d.STAGE_SEMANTIC_ID === 'S');
         const grouped = {};
 
-        for (const deal of allDeals) {
-            if (deal.STAGE_SEMANTIC_ID !== 'S') continue;
+        for (const deal of deals) {
             if (!deal.CONTACT_ID) continue;
             if (!deal.UF_CRM_1733304976338) continue;
 
             const days = daysUntil(deal.UF_CRM_1733304976338);
 
-            // 0 добавлен для корректного теста "завтра"
             if (![0, 1, 7, 14, 30].includes(days)) continue;
 
             const reminderField = getReminderField(days === 0 ? 1 : days);
 
             if (!reminderField) continue;
             if (deal[reminderField]) continue;
-            // if (isRenewed(deal, allDeals, fields)) continue;
 
             const contact = await getContact(deal.CONTACT_ID);
             const chatId = contact[TG_CHAT_FIELD];
 
             if (!chatId) continue;
 
-            if (!grouped[chatId]) {
-                grouped[chatId] = [];
-            }
+            if (!grouped[chatId]) grouped[chatId] = [];
 
             const typeName = getEnum(
                 fields.UF_CRM_1733304911569,
@@ -235,10 +231,9 @@ async function runReminderJob() {
             grouped[chatId].push({
                 deal,
                 days: days === 0 ? 1 : days,
-                typeName
+                typeName,
+                reminderField
             });
-
-            await markReminderSent(deal.ID, reminderField);
         }
 
         for (const chatId of Object.keys(grouped)) {
@@ -268,6 +263,10 @@ async function runReminderJob() {
                     inline_keyboard: keyboard
                 }
             });
+
+            for (const item of items) {
+                await markReminderSent(item.deal.ID, item.reminderField);
+            }
         }
 
     } catch (e) {
