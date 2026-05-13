@@ -107,6 +107,8 @@ for (let d of deals) {
     });
 }
         const fields = await getFields();
+const contactFieldsRes = await axios.get(`${BITRIX_WEBHOOK}crm.contact.fields`);
+console.log(contactFieldsRes.data.result);
 
         let activeDeals = [];
         let archiveDeals = [];
