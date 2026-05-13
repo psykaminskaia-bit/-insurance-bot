@@ -106,9 +106,18 @@ for (let d of deals) {
         END: d.UF_CRM_1733304976338
     });
 }
-        const fields = await getFields();
-const contactFieldsRes = await axios.get(`${BITRIX_WEBHOOK}crm.contact.fields`);
-console.log(contactFieldsRes.data.result);
+       const contactFieldsRes = await axios.get(`${BITRIX_WEBHOOK}crm.contact.fields`);
+
+let tgFieldCode = null;
+
+for (const key in contactFieldsRes.data.result) {
+    if (contactFieldsRes.data.result[key].title === 'Telegram Chat ID') {
+        tgFieldCode = key;
+        break;
+    }
+}
+
+await bot.sendMessage(chatId, `Код поля: ${tgFieldCode}`);
 
         let activeDeals = [];
         let archiveDeals = [];
