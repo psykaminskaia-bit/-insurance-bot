@@ -198,23 +198,48 @@ async function runReminderJob() {
 
     try {
         const allDeals = await getAllDeals();
-const testDeals = allDeals.filter(d => d.ID == 499);
         const fields = await getFields();
 
         const grouped = {};
 
-for (const deal of testDeals) {
-    console.log('TEST DEAL FOUND', deal.ID, deal.CONTACT_ID);
+        for (const deal of allDeals) {
+            if (deal.STAGE_SEMANTIC_ID !== 'S') continue;
+            if (!deal.CONTACT_ID) continue;
+            if (!deal.UF_CRM_1733304976338) continue;
 
-    const testContact = await getContact(deal.CONTACT_ID);
-    console.log('CONTACT TG', testContact[TG_CHAT_FIELD]);
+            const days = daysUntil(deal.UF_CRM_1733304976338);
 
-    await bot.sendMessage(String(testContact[TG_CHAT_FIELD]), 'ТЕСТ REMINDER');
-    return;
-}
+            // 0 добавлен для корректного теста "завтра"
+            if (![0, 1, 7, 14, 30].includes(days)) continue;
 
-console.log('NO TEST DEAL FOUND');
-     
+            const reminderField = getReminderField(days === 0 ? 1 : days);
+
+            if (!reminderField) continue;
+            if (deal[reminderField]) continue;
+            if (isRenewed(deal, allDeals, fields)) continue;
+
+            const contact = await getContact(deal.CONTACT_ID);
+            const chatId = contact[TG_CHAT_FIELD];
+
+            if (!chatId) continue;
+
+            if (!grouped[chatId]) {
+                grouped[chatId] = [];
+            }
+
+            const typeName = getEnum(
+                fields.UF_CRM_1733304911569,
+                deal.UF_CRM_1733304911569
+            );
+
+            grouped[chatId].push({
+                deal,
+                days: days === 0 ? 1 : days,
+                typeName
+            });
+
+            await markReminderSent(deal.ID, reminderField);
+        }
 
         for (const chatId of Object.keys(grouped)) {
             const items = grouped[chatId];
@@ -251,7 +276,7 @@ console.log('NO TEST DEAL FOUND');
 }
 
 // ===== CRON =====
-cron.schedule('*/2 * * * *', async () => {
+cron.schedule('0 14 * * *', async () => {
     await runReminderJob();
 }, {
     timezone: 'Europe/Moscow'
