@@ -85,27 +85,34 @@ bot.on('contact', async (msg) => {
             archiveMessageIds: []
         };
 
-        const dealsRes = await axios.get(`${BITRIX_WEBHOOK}crm.deal.list`, {
-            params: {
-                filter: {
-                    CONTACT_ID: contactId,
-                    STAGE_ID: ['WON', 'LOSE']
-                },
-                select: ['*', 'UF_*']
-            }
-        });
-
+const dealsRes = await axios.get(`${BITRIX_WEBHOOK}crm.deal.list`, {
+    params: {
+        filter: {
+            CONTACT_ID: contactId
+        },
+        select: ['*', 'UF_*']
+    }
+});
         const deals = dealsRes.data.result;
         const fields = await getFields();
 
         let activeDeals = [];
         let archiveDeals = [];
 
-        for (let deal of deals) {
-            const isActive = new Date(deal.UF_CRM_1733304976338) >= new Date();
-            if (isActive) activeDeals.push(deal);
-            else archiveDeals.push(deal);
-        }
+     for (let deal of deals) {
+    // берём только реально закрытые сделки
+    if (deal.STAGE_SEMANTIC_ID !== 'S' && deal.STAGE_SEMANTIC_ID !== 'F') {
+        continue;
+    }
+
+    const isActive = new Date(deal.UF_CRM_1733304976338) >= new Date();
+
+    if (isActive) {
+        activeDeals.push(deal);
+    } else {
+        archiveDeals.push(deal);
+    }
+}
 
         userData[chatId].archiveDeals = archiveDeals;
 
