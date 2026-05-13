@@ -214,50 +214,7 @@ for (const deal of testDeals) {
 }
 
 console.log('NO TEST DEAL FOUND');
-        id: deal.ID,
-        stage: deal.STAGE_SEMANTIC_ID,
-        contact: deal.CONTACT_ID,
-        end: deal.UF_CRM_1733304976338,
-        days: deal.UF_CRM_1733304976338 ? daysUntil(deal.UF_CRM_1733304976338) : null,
-        reminder1: deal[REMINDER_1]
-    });
-
-    if (deal.STAGE_SEMANTIC_ID !== 'S') continue;
-            if (!deal.CONTACT_ID) continue;
-            if (!deal.UF_CRM_1733304976338) continue;
-
-            const days = daysUntil(deal.UF_CRM_1733304976338);
-
-            if (![30, 14, 7, 1].includes(days)) continue;
-
-            const reminderField = getReminderField(days);
-
-            if (!reminderField) continue;
-            if (deal[reminderField]) continue;
-            if (isRenewed(deal, allDeals, fields)) continue;
-
-            const contact = await getContact(deal.CONTACT_ID);
-            const chatId = contact[TG_CHAT_FIELD];
-
-            if (!chatId) continue;
-
-            if (!grouped[chatId]) {
-                grouped[chatId] = [];
-            }
-
-            const typeName = getEnum(
-                fields.UF_CRM_1733304911569,
-                deal.UF_CRM_1733304911569
-            );
-
-            grouped[chatId].push({
-                deal,
-                days,
-                typeName
-            });
-
-            await markReminderSent(deal.ID, reminderField);
-        }
+     
 
         for (const chatId of Object.keys(grouped)) {
             const items = grouped[chatId];
