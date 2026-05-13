@@ -216,7 +216,7 @@ async function runReminderJob() {
 
             if (!reminderField) continue;
             if (deal[reminderField]) continue;
-            if (isRenewed(deal, allDeals, fields)) continue;
+            // if (isRenewed(deal, allDeals, fields)) continue;
 
             const contact = await getContact(deal.CONTACT_ID);
             const chatId = contact[TG_CHAT_FIELD];
