@@ -203,14 +203,17 @@ const testDeals = allDeals.filter(d => d.ID == 499);
 
         const grouped = {};
 
-  for (const deal of testDeals) {
-    const contact = await getContact(deal.CONTACT_ID);
-    const chatId = contact[TG_CHAT_FIELD];
+for (const deal of testDeals) {
+    console.log('TEST DEAL FOUND', deal.ID, deal.CONTACT_ID);
 
-    await bot.sendMessage(chatId, 'ТЕСТ REMINDER');
+    const testContact = await getContact(deal.CONTACT_ID);
+    console.log('CONTACT TG', testContact[TG_CHAT_FIELD]);
+
+    await bot.sendMessage(String(testContact[TG_CHAT_FIELD]), 'ТЕСТ REMINDER');
     return;
+}
 
-    console.log('CHECK DEAL', {
+console.log('NO TEST DEAL FOUND');
         id: deal.ID,
         stage: deal.STAGE_SEMANTIC_ID,
         contact: deal.CONTACT_ID,
