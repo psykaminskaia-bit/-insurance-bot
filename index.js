@@ -94,6 +94,18 @@ const dealsRes = await axios.get(`${BITRIX_WEBHOOK}crm.deal.list`, {
     }
 });
         const deals = dealsRes.data.result;
+console.log('ВСЕ СДЕЛКИ:', deals.length);
+
+for (let d of deals) {
+    console.log({
+        ID: d.ID,
+        TITLE: d.TITLE,
+        CONTACT_ID: d.CONTACT_ID,
+        STAGE_ID: d.STAGE_ID,
+        STAGE_SEMANTIC_ID: d.STAGE_SEMANTIC_ID,
+        END: d.UF_CRM_1733304976338
+    });
+}
         const fields = await getFields();
 
         let activeDeals = [];
