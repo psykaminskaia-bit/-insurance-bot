@@ -276,10 +276,7 @@ async function runReminderJob() {
 
 // ===== CRON =====
 cron.schedule('*/2 * * * *', async () => {
-    async function runReminderJob() {
-    console.log('REMINDER JOB STARTED');
-
-    try {
+    await runReminderJob();
 }, {
     timezone: 'Europe/Moscow'
 });
