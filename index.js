@@ -276,7 +276,7 @@ async function runReminderJob() {
 }
 
 // ===== CRON =====
-cron.schedule('0 14 * * *', async () => {
+cron.schedule('* * * * *', async () => {
     await runReminderJob();
 }, {
     timezone: 'Europe/Moscow'
