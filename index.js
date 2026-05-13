@@ -73,16 +73,15 @@ bot.on('contact', async (msg) => {
         const contactId = res.data.result.CONTACT?.[0];
 const contactFieldsRes = await axios.get(`${BITRIX_WEBHOOK}crm.contact.fields`);
 
-let tgFieldCode = null;
+let fieldsList = '';
 
 for (const key in contactFieldsRes.data.result) {
-    if (contactFieldsRes.data.result[key].title === 'Telegram Chat ID') {
-        tgFieldCode = key;
-        break;
+    if (key.startsWith('UF_CRM')) {
+        fieldsList += `${key} = ${contactFieldsRes.data.result[key].title}\n`;
     }
 }
 
-await bot.sendMessage(chatId, `КОД ПОЛЯ: ${tgFieldCode}`);
+await bot.sendMessage(chatId, fieldsList.slice(0, 4000));
 return;
 
         if (!contactId) {
