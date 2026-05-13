@@ -71,31 +71,26 @@ bot.on('contact', async (msg) => {
         });
 
         const contactId = res.data.result.CONTACT?.[0];
-const contactFieldsRes = await axios.get(`${BITRIX_WEBHOOK}crm.contact.fields`);
 
-let fieldsList = '';
-
-for (const key in contactFieldsRes.data.result) {
-    if (key.startsWith('UF_CRM')) {
-        fieldsList += `${key} = ${contactFieldsRes.data.result[key].title}\n`;
-    }
+if (!contactId) {
+    await bot.sendMessage(chatId, 'Клиент не найден');
+    return;
 }
 
-await bot.sendMessage(chatId, fieldsList.slice(0, 4000));
-return;
+await axios.post(`${BITRIX_WEBHOOK}crm.contact.update`, {
+    id: contactId,
+    fields: {
+        UF_CRM_1778707506087: String(chatId)
+    }
+});
 
-        if (!contactId) {
-            await bot.sendMessage(chatId, 'Клиент не найден');
-            return;
-        }
-
-        userData[chatId] = {
-            phone,
-            contactId,
-            archiveDeals: [],
-            archiveShown: false,
-            archiveMessageIds: []
-        };
+userData[chatId] = {
+    phone,
+    contactId,
+    archiveDeals: [],
+    archiveShown: false,
+    archiveMessageIds: []
+};
 
 const dealsRes = await axios.get(`${BITRIX_WEBHOOK}crm.deal.list`, {
     params: {
@@ -105,37 +100,13 @@ const dealsRes = await axios.get(`${BITRIX_WEBHOOK}crm.deal.list`, {
         select: ['*', 'UF_*']
     }
 });
-        const deals = dealsRes.data.result;
-console.log('ВСЕ СДЕЛКИ:', deals.length);
 
-for (let d of deals) {
-    console.log({
-        ID: d.ID,
-        TITLE: d.TITLE,
-        CONTACT_ID: d.CONTACT_ID,
-        STAGE_ID: d.STAGE_ID,
-        STAGE_SEMANTIC_ID: d.STAGE_SEMANTIC_ID,
-        END: d.UF_CRM_1733304976338
-    });
-}
-       const contactFieldsRes = await axios.get(`${BITRIX_WEBHOOK}crm.contact.fields`);
+const deals = dealsRes.data.result;
 
-let tgFieldCode = null;
+let activeDeals = [];
+let archiveDeals = [];
 
-for (const key in contactFieldsRes.data.result) {
-    if (contactFieldsRes.data.result[key].title === 'Telegram Chat ID') {
-        tgFieldCode = key;
-        break;
-    }
-}
-
-await bot.sendMessage(chatId, `Код поля: ${tgFieldCode}`);
-
-        let activeDeals = [];
-        let archiveDeals = [];
-
-     for (let deal of deals) {
-    // берём только реально закрытые сделки
+for (let deal of deals) {
     if (deal.STAGE_SEMANTIC_ID !== 'S' && deal.STAGE_SEMANTIC_ID !== 'F') {
         continue;
     }
@@ -149,8 +120,7 @@ await bot.sendMessage(chatId, `Код поля: ${tgFieldCode}`);
     }
 }
 
-        userData[chatId].archiveDeals = archiveDeals;
-
+userData[chatId].archiveDeals = archiveDeals;
         // ===== АКТИВНЫЕ =====
         for (let deal of activeDeals) {
 
