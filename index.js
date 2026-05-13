@@ -194,6 +194,8 @@ async function sendRenewRequest(chatId, user, dealId) {
     );
 }
 async function runReminderJob() {
+    console.log('REMINDER JOB STARTED');
+
     try {
         const allDeals = await getAllDeals();
         const fields = await getFields();
@@ -213,7 +215,6 @@ async function runReminderJob() {
 
             if (!reminderField) continue;
             if (deal[reminderField]) continue;
-
             if (isRenewed(deal, allDeals, fields)) continue;
 
             const contact = await getContact(deal.CONTACT_ID);
