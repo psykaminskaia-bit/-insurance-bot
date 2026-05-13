@@ -34,13 +34,16 @@ let fieldsCache = null;
 
 async function getFields() {
     if (fieldsCache) return fieldsCache;
+
     const res = await axios.get(`${BITRIX_WEBHOOK}crm.deal.fields`);
     fieldsCache = res.data.result;
+
     return fieldsCache;
 }
 
 function getEnum(field, id) {
     if (!field?.items) return '-';
+
     const found = field.items.find(i => i.ID == id);
     return found ? found.VALUE : '-';
 }
@@ -72,58 +75,60 @@ bot.on('contact', async (msg) => {
 
         const contactId = res.data.result.CONTACT?.[0];
 
-if (!contactId) {
-    await bot.sendMessage(chatId, 'Клиент не найден');
-    return;
-}
+        if (!contactId) {
+            await bot.sendMessage(chatId, 'Клиент не найден');
+            return;
+        }
 
-await axios.post(`${BITRIX_WEBHOOK}crm.contact.update`, {
-    id: contactId,
-    fields: {
-        UF_CRM_1778707506087: String(chatId)
-    }
-});
+        // сохраняем chat id в контакт Bitrix
+        await axios.post(`${BITRIX_WEBHOOK}crm.contact.update`, {
+            id: contactId,
+            fields: {
+                UF_CRM_1778707506087: String(chatId)
+            }
+        });
 
-userData[chatId] = {
-    phone,
-    contactId,
-    archiveDeals: [],
-    archiveShown: false,
-    archiveMessageIds: []
-};
+        userData[chatId] = {
+            phone,
+            contactId,
+            archiveDeals: [],
+            archiveShown: false,
+            archiveMessageIds: []
+        };
 
-const dealsRes = await axios.get(`${BITRIX_WEBHOOK}crm.deal.list`, {
-    params: {
-        filter: {
-            CONTACT_ID: contactId
-        },
-        select: ['*', 'UF_*']
-    }
-});
+        const dealsRes = await axios.get(`${BITRIX_WEBHOOK}crm.deal.list`, {
+            params: {
+                filter: {
+                    CONTACT_ID: contactId
+                },
+                select: ['*', 'UF_*']
+            }
+        });
 
-const deals = dealsRes.data.result;
+        const deals = dealsRes.data.result || [];
+        const fields = await getFields();
 
-let activeDeals = [];
-let archiveDeals = [];
+        let activeDeals = [];
+        let archiveDeals = [];
 
-for (let deal of deals) {
-    if (deal.STAGE_SEMANTIC_ID !== 'S' && deal.STAGE_SEMANTIC_ID !== 'F') {
-        continue;
-    }
+        for (let deal of deals) {
+            if (deal.STAGE_SEMANTIC_ID !== 'S' && deal.STAGE_SEMANTIC_ID !== 'F') {
+                continue;
+            }
 
-    const isActive = new Date(deal.UF_CRM_1733304976338) >= new Date();
+            const isActive = new Date(deal.UF_CRM_1733304976338) >= new Date();
 
-    if (isActive) {
-        activeDeals.push(deal);
-    } else {
-        archiveDeals.push(deal);
-    }
-}
+            if (isActive) {
+                activeDeals.push(deal);
+            } else {
+                archiveDeals.push(deal);
+            }
+        }
 
-userData[chatId].archiveDeals = archiveDeals;
+        userData[chatId].archiveDeals = archiveDeals;
+
         // ===== АКТИВНЫЕ =====
         for (let deal of activeDeals) {
-
             const typeName = getEnum(fields.UF_CRM_1733304911569, deal.UF_CRM_1733304911569);
             const companyName = getEnum(fields.UF_CRM_1733304804509, deal.UF_CRM_1733304804509);
 
@@ -139,8 +144,8 @@ userData[chatId].archiveDeals = archiveDeals;
             if (typeName === 'ОСАГО' || typeName === 'КАСКО') {
                 text += `
 🚗 Автомобиль:
-${deal.UF_CRM_1733305076124 || '-'} 
-${deal.UF_CRM_1733305117367 || '-'} 
+${deal.UF_CRM_1733305076124 || '-'}
+${deal.UF_CRM_1733305117367 || '-'}
 ${deal.UF_CRM_1733305134235 || '-'}
 `;
             }
@@ -170,8 +175,8 @@ ${deal.UF_CRM_1733305134235 || '-'}
         }
 
     } catch (e) {
-        console.log(e);
-        bot.sendMessage(chatId, 'Ошибка');
+        console.log('CONTACT ERROR:', e.response?.data || e.message);
+        await bot.sendMessage(chatId, 'Ошибка');
     }
 });
 
@@ -181,86 +186,92 @@ bot.on('callback_query', async (query) => {
     const data = query.data;
     const user = userData[chatId];
 
-    if (!user) return;
+    if (!user) {
+        await bot.answerCallbackQuery(query.id);
+        return;
+    }
 
-    // ===== архив =====
-    if (data === 'toggle_archive') {
-        if (!user.archiveShown) {
-            user.archiveMessageIds = [];
+    try {
+        if (data === 'toggle_archive') {
+            if (!user.archiveShown) {
+                user.archiveMessageIds = [];
 
-            for (let deal of user.archiveDeals) {
-                const msg = await bot.sendMessage(chatId, `📄 Архивный полис — 🔴 Истёк
-Номер: ${deal.UF_CRM_1733304951785}
+                for (let deal of user.archiveDeals) {
+                    const msg = await bot.sendMessage(chatId, `📄 Архивный полис — 🔴 Истёк
+Номер: ${deal.UF_CRM_1733304951785 || '-'}
 Сумма: ${formatMoney(deal.OPPORTUNITY)} ₽
 Конец: ${formatDate(deal.UF_CRM_1733304976338)}
 `);
-                user.archiveMessageIds.push(msg.message_id);
+
+                    user.archiveMessageIds.push(msg.message_id);
+                }
+
+                user.archiveShown = true;
+
+                await bot.editMessageReplyMarkup({
+                    inline_keyboard: [
+                        [{ text: '❌ Скрыть архив', callback_data: 'toggle_archive' }]
+                    ]
+                }, {
+                    chat_id: chatId,
+                    message_id: query.message.message_id
+                });
+
+            } else {
+                for (let id of user.archiveMessageIds) {
+                    try {
+                        await bot.deleteMessage(chatId, id);
+                    } catch {}
+                }
+
+                user.archiveShown = false;
+
+                await bot.editMessageReplyMarkup({
+                    inline_keyboard: [
+                        [{ text: '📂 Показать архив', callback_data: 'toggle_archive' }]
+                    ]
+                }, {
+                    chat_id: chatId,
+                    message_id: query.message.message_id
+                });
             }
-
-            user.archiveShown = true;
-
-            await bot.editMessageReplyMarkup({
-                inline_keyboard: [
-                    [{ text: '❌ Скрыть архив', callback_data: 'toggle_archive' }]
-                ]
-            }, {
-                chat_id: chatId,
-                message_id: query.message.message_id
-            });
-
-        } else {
-            for (let id of user.archiveMessageIds) {
-                try {
-                    await bot.deleteMessage(chatId, id);
-                } catch {}
-            }
-
-            user.archiveShown = false;
-
-            await bot.editMessageReplyMarkup({
-                inline_keyboard: [
-                    [{ text: '📂 Показать архив', callback_data: 'toggle_archive' }]
-                ]
-            }, {
-                chat_id: chatId,
-                message_id: query.message.message_id
-            });
         }
-    }
 
-    // ===== ПРОДЛЕНИЕ =====
-    if (data.startsWith('renew_')) {
-        const dealId = data.split('_')[1];
+        if (data.startsWith('renew_')) {
+            const dealId = data.split('_')[1];
 
-        const dealRes = await axios.get(`${BITRIX_WEBHOOK}crm.deal.get`, {
-            params: { id: dealId }
-        });
+            const dealRes = await axios.get(`${BITRIX_WEBHOOK}crm.deal.get`, {
+                params: { id: dealId }
+            });
 
-        const deal = dealRes.data.result;
-        const fields = await getFields();
+            const deal = dealRes.data.result;
+            const fields = await getFields();
 
-        const typeName = getEnum(fields.UF_CRM_1733304911569, deal.UF_CRM_1733304911569);
-        const companyName = getEnum(fields.UF_CRM_1733304804509, deal.UF_CRM_1733304804509);
+            const typeName = getEnum(fields.UF_CRM_1733304911569, deal.UF_CRM_1733304911569);
+            const companyName = getEnum(fields.UF_CRM_1733304804509, deal.UF_CRM_1733304804509);
 
-        const contactRes = await axios.get(`${BITRIX_WEBHOOK}crm.contact.get`, {
-            params: { id: user.contactId }
-        });
+            const contactRes = await axios.get(`${BITRIX_WEBHOOK}crm.contact.get`, {
+                params: { id: user.contactId }
+            });
 
-        const contact = contactRes.data.result;
-        const clientName = `${contact.NAME || ''} ${contact.LAST_NAME || ''}`.trim();
+            const contact = contactRes.data.result;
+            const clientName = `${contact.NAME || ''} ${contact.LAST_NAME || ''}`.trim();
 
-        const message = `🔥 ЗАЯВКА НА ПРОДЛЕНИЕ
+            const message = `🔥 ЗАЯВКА НА ПРОДЛЕНИЕ
 👤 Клиент: ${clientName}
 📞 Телефон: ${user.phone}
-📄 Полис: ${deal.UF_CRM_1733304951785}
+📄 Полис: ${deal.UF_CRM_1733304951785 || '-'}
 📌 Вид: ${typeName}
 🏢 Компания: ${companyName}
-🆔 Сделка: ${dealId}
-`;
+🆔 Сделка: ${dealId}`;
 
-        await bot.sendMessage(ADMIN_CHAT_ID, message);
-        await bot.sendMessage(chatId, '✅ Заявка отправлена! Мы скоро свяжемся с вами');
+            await bot.sendMessage(ADMIN_CHAT_ID, message);
+            await bot.sendMessage(chatId, '✅ Заявка отправлена! Мы скоро свяжемся с вами');
+        }
+
+    } catch (e) {
+        console.log('CALLBACK ERROR:', e.response?.data || e.message);
     }
 
-    bot.answerCallbackQuery(query.id);
+    await bot.answerCallbackQuery(query.id);
 });
